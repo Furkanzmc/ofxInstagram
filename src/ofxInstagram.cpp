@@ -19,6 +19,33 @@ ofxInstagram::ofxInstagram()
     , m_MediaURL("https://api.instagram.com/v1/media/")
     , m_TagsURL("https://api.instagram.com/v1/tags/")
     , m_LocationsURL("https://api.instagram.com/v1/locations/")
+      //User Endpoint Requests
+    , m_RequestUserInfo("request_user_info")
+    , m_RequestUserFeed("request_user_feed")
+    , m_RequestUserRecentMedia("request_user_recent_media")
+    , m_RequestUserLikedMedia("request_user_liked_media")
+    , m_RequestUserSearch("request_user_search")
+      //Relationship Endpoint Requests
+    , m_RequestRelationshipFollowing("request_relationship_following")
+    , m_RequestRelationshipFollowers("request_relationship_followers")
+    , m_RequestRelationshipFollowRequests("request_relationship_follow_requests")
+    , m_RequestRelationshipUserRel("request_relationship_user_rel")
+      //Media Endpoint Requests
+    , m_RequestMediaInformation("request_media_information")
+    , m_RequestMediaSearch("request_media_search")
+    , m_RequestMediaPopular("request_media_popular")
+      //Comment Endpoint Requests
+    , m_RequestCommentForMedia("request_comment_for_media")
+      //Like Endpoint Requests
+    , m_RequestLikesUserListForMedia("request_list_of_users_who_liked_media")
+      //Tag Endpoint Requests
+    , m_RequestTagInfo("request_tag_info")
+    , m_RequestTagPostList("request_tag_post_list")
+    , m_RequestTagSearch("request_tag_search")
+      //Location Endpoint Requests
+    , m_RequestLocationInfo("request_location_info")
+    , m_RequestLocationRecentMedia("request_location_recent_media")
+    , m_RequestLocationSearch("request_location_search")
     , m_Response()
     , m_AuthToken("")
     , m_ClientID("")
@@ -34,6 +61,7 @@ ofxInstagram::ofxInstagram()
 
 void ofxInstagram::setup(std::string auth_token, std::string clientID)
 {
+    ofRegisterURLNotification(this);
     m_ScrollValue = 0;
     // Set the Tokens
     m_AuthToken = auth_token;
@@ -72,25 +100,27 @@ void ofxInstagram::resetScroll()
 // *  GET User Like Media
 // *  GET User Search Users
 
-UserInfo ofxInstagram::getUserInformation(std::string who)
+void ofxInstagram::getUserInformation(std::string who, std::function<void(UserInfo)> callback)
 {
-    std::stringstream url;
-    url << m_UsersURL << who << "/?access_token=" << m_AuthToken;
-
-    std::cout << __FUNCTION__ << ": " << "Getting Info about User: This is your request: " << url.str()  << "\n";
-    m_Response = ofLoadURL(url.str());
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return UserInfo();
+    if (callback) {
+        onUserInfoReceived = callback;
     }
 
-    return constructUserInfo(json["data"]);
+    std::stringstream url;
+    url << m_UsersURL << who << "/?access_token=" << m_AuthToken;
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestUserInfo));
+
+#ifdef _DEBUG
+    std::cout << __FUNCTION__ << ": " << "Getting Info about User: This is your request: " << url.str()  << "\n";
+#endif _DEBUG
 }
 
-Posts ofxInstagram::getUserFeed(int count, std::string username, std::string minID, std::string maxID)
+void ofxInstagram::getUserFeed(int count, std::string username, std::function<void(Posts)> callback, std::string minID, std::string maxID)
 {
+    if (callback) {
+        onUserFeedReceived = callback;
+    }
+
     std::stringstream url;
     url << m_UsersURL << username << "/feed?access_token=" << m_AuthToken << "&count=" << std::to_string(count);
 
@@ -102,21 +132,19 @@ Posts ofxInstagram::getUserFeed(int count, std::string username, std::string min
         url << "&maxID=" << maxID;
     }
 
-    m_Response = ofLoadURL(url.str());
-
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestUserFeed));
+#ifdef _DEBUG
     std::cout << __FUNCTION__ << ": " << "Getting Users Feed: This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return Posts();
-    }
-
-    return std::make_pair(constructPostsData(json), constructPagination(json["pagination"]));
+#endif //_DEBUG
 }
 
-Posts ofxInstagram::getUserRecentMedia(std::string who, int count, std::string maxTimestamp, std::string minTimestamp, std::string minID, std::string maxID)
+void ofxInstagram::getUserRecentMedia(std::string who, int count, std::function<void(Posts)> callback, std::string maxTimestamp, std::string minTimestamp,
+                                      std::string minID, std::string maxID)
 {
+    if (callback) {
+        onUserRecentMediaReceived = callback;
+    }
+
     std::stringstream url;
     url << m_UsersURL << who << "/media/recent?access_token=" << m_AuthToken << "&count=" << std::to_string(count);
 
@@ -136,21 +164,18 @@ Posts ofxInstagram::getUserRecentMedia(std::string who, int count, std::string m
         url << "&max_timestamp=" << maxTimestamp;
     }
 
-    m_Response = ofLoadURL(url.str());
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestUserRecentMedia));
+#ifdef _DEBUG
     std::cout << __FUNCTION__ << ": " << "Getting " << who << "'s Feed: This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return Posts();
-    }
-
-    return std::make_pair(constructPostsData(json), constructPagination(json["pagination"]));
-
+#endif //_DEBUG
 }
 
-Posts ofxInstagram::getUserLikedMedia(int count, std::string username, std::string maxLikeID)
+void ofxInstagram::getUserLikedMedia(int count, std::string username, std::function<void(Posts)> callback, std::string maxLikeID)
 {
+    if (callback) {
+        onUserLikedMediaReceived = callback;
+    }
+
     std::stringstream url;
     url << m_UsersURL << username << "/media/liked?access_token=" << m_AuthToken << "&count=" << std::to_string(count);
 
@@ -158,21 +183,19 @@ Posts ofxInstagram::getUserLikedMedia(int count, std::string username, std::stri
         url << "&max_like_ID=" << maxLikeID;
     }
 
-    m_Response = ofLoadURL(url.str());
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestUserLikedMedia));
 
+#ifdef _DEBUG
     std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return Posts();
-    }
-
-    return std::make_pair(constructPostsData(json), constructPagination(json["pagination"]));
+#endif //_DEBUG
 }
 
-std::vector<UserInfo> ofxInstagram::getSearchUsers(std::string query, int count)
+void ofxInstagram::getSearchUsers(std::string query, int count, std::function<void(std::vector<UserInfo>)> callback)
 {
+    if (callback) {
+        onUserSearchReceived = callback;
+    }
+
     std::stringstream url;
     url << m_UsersURL << "search?access_token=" << m_AuthToken << "&count=" << std::to_string(count);
 
@@ -180,25 +203,10 @@ std::vector<UserInfo> ofxInstagram::getSearchUsers(std::string query, int count)
         url << "&q=" << query;
     }
 
-    m_Response = ofLoadURL(url.str());
-
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestUserSearch));
+#ifdef _DEBUG
     std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return std::vector<UserInfo>();
-    }
-
-    const ofxJSONElement usersJson = json["data"];
-    const unsigned int returnCount = usersJson.size();
-    std::vector<UserInfo> users;
-
-    for (unsigned int userIndex = 0; userIndex < returnCount; userIndex++) {
-        users.push_back(constructUserInfo(usersJson[userIndex]));
-    }
-
-    return users;
+#endif //_DEBUG
 }
 
 // *                RELATIONSHIP ENDPOINTS
@@ -208,106 +216,68 @@ std::vector<UserInfo> ofxInstagram::getSearchUsers(std::string query, int count)
 // *  GET relationship to User
 // *  POST change Relationship to User
 
-std::vector<UserInfo> ofxInstagram::getWhoUserFollows(std::string who)
+void ofxInstagram::getWhoUserFollows(std::string who, std::function<void(std::vector<UserInfo>)> callback)
 {
+    if (callback) {
+        onUserFollowingReceived = callback;
+    }
+
     std::stringstream url;
     url << m_UsersURL << who << "/follows?access_token=" << m_AuthToken;
 
-    m_Response = ofLoadURL(url.str());
-
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestRelationshipFollowing));
+#ifdef _DEBUG
     std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return std::vector<UserInfo>();
-    }
-
-    const ofxJSONElement usersJson = json["data"];
-    const unsigned int returnCount = usersJson.size();
-    std::vector<UserInfo> users;
-
-    for (unsigned int userIndex = 0; userIndex < returnCount; userIndex++) {
-        users.push_back(constructUserInfo(usersJson[userIndex]));
-    }
-
-    return users;
+#endif //_DEBUG
 }
 
-std::vector<UserInfo> ofxInstagram::getWhoUserIsFollowedBy(std::string who)
+void ofxInstagram::getUserFollowers(std::string who, std::function<void(std::vector<UserInfo>)> callback)
 {
+    if (callback) {
+        onUserFollowersReceived = callback;
+    }
+
     std::stringstream url;
     url << m_UsersURL << who << "/followed-by?access_token=" << m_AuthToken;
 
-    m_Response = ofLoadURL(url.str());
-
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestRelationshipFollowers));
+#ifdef _DEBUG
     std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return std::vector<UserInfo>();
-    }
-
-    const ofxJSONElement usersJson = json["data"];
-    const unsigned int returnCount = usersJson.size();
-    std::vector<UserInfo> users;
-
-    for (unsigned int userIndex = 0; userIndex < returnCount; userIndex++) {
-        users.push_back(constructUserInfo(usersJson[userIndex]));
-    }
-
-    return users;
+#endif //_DEBUG
 }
 
-std::vector<UserInfo> ofxInstagram::getWhoHasRequestedToFollow(std::string who)
+void ofxInstagram::getWhoHasRequestedToFollow(std::string who, std::function<void(std::vector<UserInfo>)> callback)
 {
+    if (callback) {
+        onUserFollowRequestsReceived = callback;
+    }
+
     std::stringstream url;
     url << m_UsersURL << who << "/requested-by?access_token=" << m_AuthToken;
 
-    m_Response = ofLoadURL(url.str());
-
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestRelationshipFollowRequests));
+#ifdef _DEBUG
     std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return std::vector<UserInfo>();
-    }
-
-    const ofxJSONElement usersJson = json["data"];
-    const unsigned int returnCount = usersJson.size();
-    std::vector<UserInfo> users;
-
-    for (unsigned int userIndex = 0; userIndex < returnCount; userIndex++) {
-        users.push_back(constructUserInfo(usersJson[userIndex]));
-    }
-
-    return users;
+#endif //_DEBUG
 }
 
-Relationship ofxInstagram::getRelationshipToUser(std::string who)
+void ofxInstagram::getRelationshipToUser(std::string who, std::function<void(Relationship)> callback)
 {
+    if (callback) {
+        onUserRelationshipReceived = callback;
+    }
+
     std::stringstream url;
     url << m_UsersURL << who << "/relationship?access_token=" << m_AuthToken;
 
-    m_Response = ofLoadURL(url.str());
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestRelationshipUserRel));
 
+#ifdef _DEBUG
     std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return Relationship();
-    }
-
-    Relationship rel;
-    rel.outgoingStatus = json["data"]["outgoing_status"].asString();
-    rel.incomngStatus = json["data"]["incoming_status"].asString();
-    return rel;
+#endif //_DEBUG
 }
 
-void ofxInstagram::changeRelationshipToUser(std::string who, std::string action)
+void ofxInstagram::changeRelationshipToUser(std::string who, std::string action, std::function<void(UserInfo)> callback)
 {
     //follow/unfollow/block/unblock/approve/ignore.
     // TO DO
@@ -321,32 +291,43 @@ void ofxInstagram::changeRelationshipToUser(std::string who, std::string action)
 // *  GET Popular Media
 // *
 
-PostData ofxInstagram::getMediaInformation(std::string mediaID)
+void ofxInstagram::getMediaInformation(std::string mediaID, std::function<void(PostData)> callback)
 {
+    if (callback) {
+        onMediaInformationReceived = callback;
+    }
+
     std::stringstream url;
     url << m_MediaURL << mediaID << "?access_token=" << m_AuthToken;
-    m_Response = ofLoadURL(url.str());
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestMediaInformation));
 
+#ifdef _DEBUG
     std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    json.parse(m_Response.data);
-    return constructPostData(json["data"]);
+#endif //_DEBUG
 }
 
-PostData ofxInstagram::getMediaInfoUsingShortcode(std::string shortcode)
+void ofxInstagram::getMediaInfoUsingShortcode(std::string shortcode, std::function<void(PostData)> callback)
 {
+    if (callback) {
+        onMediaInformationReceived = callback;
+    }
+
     std::stringstream url;
     url << m_MediaURL << "shortcode/" << shortcode << "?access_token=" << m_AuthToken;
-    m_Response = ofLoadURL(url.str());
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestMediaInformation));
 
+#ifdef _DEBUG
     std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    json.parse(m_Response.data);
-    return constructPostData(json["data"]);
+#endif //_DEBUG
 }
 
-Posts ofxInstagram::searchMedia(std::string lat, std::string lng, std::string min_timestamp, std::string max_timestamp, int distance)
+void ofxInstagram::searchMedia(std::string lat, std::string lng, std::string min_timestamp, std::string max_timestamp, int distance,
+                               std::function<void(Posts)> callback)
 {
+    if (callback) {
+        onMediaSearchReceived = callback;
+    }
+
     std::stringstream url;
     url << m_MediaURL << "search?access_token=" << m_AuthToken;
 
@@ -367,88 +348,69 @@ Posts ofxInstagram::searchMedia(std::string lat, std::string lng, std::string mi
     }
     url << "&distance=" << distance;
 
-    m_Response = ofLoadURL(url.str());
-    std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return Posts();
-    }
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestMediaSearch));
 
-    return std::make_pair(constructPostsData(json), constructPagination(json["pagination"]));
+#ifdef _DEBUG
+    std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
+#endif //_DEBUG
 }
 
-Posts ofxInstagram::getPopularMedia()
+void ofxInstagram::getPopularMedia(std::function<void(Posts)> callback)
 {
-    std::stringstream url;
-    url << m_MediaURL << "popular?access_token=" << m_AuthToken;
-    m_Response = ofLoadURL(url.str());
-
-    std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return Posts();
+    if (callback) {
+        onMediaPopularReceived = callback;
     }
 
-    return std::make_pair(constructPostsData(json), constructPagination(json["pagination"]));
+    std::stringstream url;
+    url << m_MediaURL << "popular?access_token=" << m_AuthToken;
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestMediaPopular));
+
+#ifdef _DEBUG
+    std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
+#endif //_DEBUG
 }
 
 // *
 // *                        COMMENT ENDPOINTS
 // *  GET Comments on Media Object
-// *  POST Comment on Media Object
-// *  DELETE Comment on Media Object
+// *  POST Comment on Media Object - TODO
+// *  DELETE Comment on Media Object - TODO
 // *
 
-std::vector<Comment> ofxInstagram::getCommentsForMedia(std::string mediaID)
+void ofxInstagram::getCommentsForMedia(std::string mediaID, std::function<void(std::vector<Comment>)> callback)
 {
-    std::stringstream url;
-    url << m_MediaURL << mediaID << "/comments?access_token=" << m_AuthToken;
-    m_Response = ofLoadURL(url.str());
-
-    std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return std::vector<Comment>();
+    if (callback) {
+        onCommentsForMediaReceived = callback;
     }
 
-    return constructComments(json["data"]);
+    std::stringstream url;
+    url << m_MediaURL << mediaID << "/comments?access_token=" << m_AuthToken;
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestCommentForMedia));
+
+#ifdef _DEBUG
+    std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
+#endif //_DEBUG
 }
 
 // *                        LIKE ENDPOINTS
 // *  GET List of Likes on Media Object
-// *  POST Like Media
-// *  POST unlike Media
+// *  POST Like Media - TODO
+// *  POST unlike Media - TODO
 // *
 
-std::vector<UserInfo> ofxInstagram::getListOfUsersWhoLikedMedia(std::string mediaID)
+void ofxInstagram::getListOfUsersWhoLikedMedia(std::string mediaID, std::function<void(std::vector<UserInfo>)> callback)
 {
+    if (callback) {
+        onListOfUsersWhoLikedMediaReceived = callback;
+    }
+
     std::stringstream url;
     url << m_MediaURL << mediaID << "/likes?access_token=" << m_AuthToken;
-    m_Response = ofLoadURL(url.str());
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestLikesUserListForMedia));
 
+#ifdef _DEBUG
     std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return std::vector<UserInfo>();
-    }
-
-    const ofxJSONElement usersJson = json["data"];
-    const unsigned int returnCount = usersJson.size();
-    std::vector<UserInfo> users;
-
-    for (unsigned int userIndex = 0; userIndex < returnCount; userIndex++) {
-        users.push_back(constructUserInfo(usersJson[userIndex]));
-    }
-
-    return users;
+#endif //_DEBUG
 }
 
 // *
@@ -458,29 +420,28 @@ std::vector<UserInfo> ofxInstagram::getListOfUsersWhoLikedMedia(std::string medi
 // *  GET Search for Tag Objects
 // *
 
-TagInfo ofxInstagram::getInfoForTags(std::string tagname)
+void ofxInstagram::getInfoForTag(std::string tagname, std::function<void(TagInfo)> callback)
 {
-    std::stringstream url;
-    url << m_TagsURL << tagname << "?access_token=" << m_AuthToken;
-    m_Response = ofLoadURL(url.str());
-
-    std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return TagInfo();
+    if (callback) {
+        onTagInfoReceived = callback;
     }
 
-    TagInfo tagInfo;
-    tagInfo.mediaCount = json["data"]["media_count"].asInt();
-    tagInfo.name = json["data"]["name"].asString();
+    std::stringstream url;
+    url << m_TagsURL << tagname << "?access_token=" << m_AuthToken;
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestTagInfo));
 
-    return tagInfo;
+#ifdef _DEBUG
+    std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
+#endif //_DEBUG
 }
 
-Posts ofxInstagram::getListOfTaggedObjectsNormal(std::string tagname, int count, std::string min_tagID, std::string max_tagID)
+void ofxInstagram::getListOfTaggedObjectsNormal(std::string tagname, int count, std::function<void(Posts)> callback, std::string min_tagID,
+        std::string max_tagID)
 {
+    if (callback) {
+        onPostsForTagReceived = callback;
+    }
+
     std::stringstream url;
     url << m_TagsURL << tagname << "/media/recent?access_token=" << m_AuthToken;
 
@@ -494,21 +455,15 @@ Posts ofxInstagram::getListOfTaggedObjectsNormal(std::string tagname, int count,
 
     url << "&count=" << count;
 
-    m_Response = ofLoadURL(url.str());
-
-    std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return Posts();
-    }
-
-    return std::make_pair(constructPostsData(json), constructPagination(json["pagination"]));
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestTagPostList));
 }
 
-Posts ofxInstagram::getListOfTaggedObjectsPagination(std::string tagname, int count, std::string max_tagID)
+void ofxInstagram::getListOfTaggedObjectsPagination(std::string tagname, int count, std::function<void(Posts)> callback, std::string max_tagID)
 {
+    if (callback) {
+        onPostsForTagReceived = callback;
+    }
+
     std::stringstream url;
     url << m_TagsURL << tagname << "/media/recent?access_token=" << m_AuthToken;
 
@@ -518,45 +473,23 @@ Posts ofxInstagram::getListOfTaggedObjectsPagination(std::string tagname, int co
 
     url << "&count=" << count;
 
-    m_Response = ofLoadURL(url.str());
-
-    std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return Posts();
-    }
-
-    return std::make_pair(constructPostsData(json), constructPagination(json["pagination"]));
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestTagPostList));
 }
 
-std::vector<TagInfo> ofxInstagram::searchForTags(std::string query)
+void ofxInstagram::searchForTags(std::string query, std::function<void(std::vector<TagInfo>)> callback)
 {
+    if (callback) {
+        onTagSearchReceived = callback;
+    }
+
     std::stringstream url;
     url << m_TagsURL << "search?q=" << query << "&access_token=" << m_AuthToken;
 
-    m_Response = ofLoadURL(url.str());
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestTagSearch));
 
+#ifdef _DEBUG
     std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return std::vector<TagInfo>();
-    }
-
-    std::vector<TagInfo> tags;
-    const ofxJSONElement tagsJson = json["data"];
-    const unsigned int tagCount = tagsJson.size();
-    for (unsigned int tagIndex = 0; tagIndex < tagCount; tagIndex++) {
-        TagInfo tagInfo;
-        tagInfo.mediaCount = tagsJson[tagIndex]["media_count"].asInt();
-        tagInfo.name = tagsJson[tagIndex]["name"].asString();
-        tags.push_back(tagInfo);
-    }
-
-    return tags;
+#endif //_DEBUG
 }
 
 // *                   LOCATIONS ENDPOINTS
@@ -564,26 +497,29 @@ std::vector<TagInfo> ofxInstagram::searchForTags(std::string query)
 // *  GET Recent Media from Location
 // *  GET Search for Locations by LAT,LNG
 
-Location ofxInstagram::getInfoAboutLocation(std::string locationID)
+void ofxInstagram::getInfoAboutLocation(std::string locationID, std::function<void(Location)> callback)
 {
+    if (callback) {
+        onLocationInfoReceived = callback;
+    }
+
     std::stringstream url;
     url << m_LocationsURL << locationID << "?access_token=" << m_AuthToken;
 
-    m_Response = ofLoadURL(url.str());
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestLocationInfo));
 
+#ifdef _DEBUG
     std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return Location();
-    }
-
-    return constructLocation(json["data"]);
+#endif //_DEBUG
 }
 
-Posts ofxInstagram::getRecentMediaFromLocation(std::string locationID, std::string minTimestamp, std::string maxTimestamp, std::string minID, std::string maxID)
+void ofxInstagram::getRecentMediaFromLocation(std::string locationID, std::function<void(Posts)> callback, std::string minTimestamp, std::string maxTimestamp,
+        std::string minID, std::string maxID)
 {
+    if (callback) {
+        onPostsFromLocationReceived = callback;
+    }
+
     std::stringstream url;
     url << m_LocationsURL << locationID << "/media/recent?access_token=" << m_AuthToken;
 
@@ -602,22 +538,17 @@ Posts ofxInstagram::getRecentMediaFromLocation(std::string locationID, std::stri
     if (maxTimestamp.length() != 0) {
         url << "&max_timestamp=" << maxTimestamp;
     }
-    m_Response = ofLoadURL(url.str());
-
-    std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return Posts();
-    }
-
-    return std::make_pair(constructPostsData(json), constructPagination(json["pagination"]));
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestLocationRecentMedia));
 }
 
-std::vector<Location> ofxInstagram::searchForLocations(std::string distance, std::string lat, std::string lng, std::string facebook_PlacesID,
-        std::string foursquareID)
+void ofxInstagram::searchForLocations(std::string distance, std::string lat, std::string lng, std::function<void(std::vector<Location>)> callback,
+                                      std::string facebook_PlacesID,
+                                      std::string foursquareID)
 {
+    if (callback) {
+        onLocationSearchReceived = callback;
+    }
+
     std::stringstream url;
     url << m_LocationsURL << "search?";
 
@@ -639,24 +570,12 @@ std::vector<Location> ofxInstagram::searchForLocations(std::string distance, std
 
     url << "&distance=" << distance;
     url << "&access_token=" << m_AuthToken;
-    m_Response = ofLoadURL(url.str());
 
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestLocationSearch));
+
+#ifdef _DEBUG
     std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
-    ofxJSONElement json;
-    const bool isParseSuccesful = json.parse(m_Response.data);
-    if (isParseSuccesful == false) {
-        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error!";
-        return std::vector<Location>();
-    }
-
-    std::vector<Location> locations;
-    const ofxJSONElement locationsJson = json["data"];
-    const unsigned int locationCount = locationsJson.size();
-    for (unsigned int locationIndex = 0; locationIndex < locationCount; locationIndex++) {
-        locations.push_back(constructLocation(locationsJson[locationIndex]));
-    }
-
-    return locations;
+#endif //_DEBUG
 }
 
 Meta ofxInstagram::getLastError() const
@@ -664,6 +583,38 @@ Meta ofxInstagram::getLastError() const
     ofxJSONElement json;
     json.parse(m_Response.data);
     return constructMeta(json["meta"]);
+}
+
+void ofxInstagram::urlResponse(ofHttpResponse &response)
+{
+    auto idIndex = std::find(m_RequestIDs.begin(), m_RequestIDs.end(), response.request.getID());
+    if (idIndex == m_RequestIDs.end()) {
+        return;
+    }
+
+    m_RequestIDs.erase(idIndex);
+    m_Response = response;
+    ofxJSONElement json;
+    const bool isParseSuccesful = json.parse(response.data);
+    if (isParseSuccesful == false) {
+        ofLogError("ofxInstagram") << __FUNCTION__ << ": Parse error. Request type: " << response.request.name;
+        return;
+    }
+
+    //User Endpoints
+    handleUserEndpointResponse(response, json);
+    //Relationship Endpoints
+    handleRelationshipEndpointResponse(response, json);
+    //Media Endpoints
+    handleMediaEndpointResponse(response, json);
+    //Comment Endpoints
+    handleCommentEndpointResponse(response, json);
+    //Like Endpoints
+    handleLikeEndpointResponse(response, json);
+    //Tag Endpoints
+    handleTagEndpointResponse(response, json);
+    //Location Endpoints
+    handleLocationEndpointResponse(response, json);
 }
 
 std::string ofxInstagram::getParsedJSONString() const
@@ -676,7 +627,7 @@ std::string ofxInstagram::getParsedJSONString() const
     }
 }
 
-std::vector<ofxInstagram::PostData> ofxInstagram::constructPostsData(const ofxJSONElement &json) const
+std::vector<ofxInstagram::PostData> ofxInstagram::constructPostDatas(const ofxJSONElement &json) const
 {
     std::vector<ofxInstagram::PostData> posts;
     const unsigned int responseCount = json["data"].size();
@@ -783,6 +734,18 @@ PostData ofxInstagram::constructPostData(const ofxJSONElement &postJson) const
     return post;
 }
 
+std::vector<UserInfo> ofxInstagram::constructUserInfos(const ofxJSONElement &json) const
+{
+    const ofxJSONElement usersJson = json["data"];
+    const unsigned int returnCount = usersJson.size();
+    std::vector<UserInfo> users;
+
+    for (unsigned int userIndex = 0; userIndex < returnCount; userIndex++) {
+        users.push_back(constructUserInfo(usersJson[userIndex]));
+    }
+    return users;
+}
+
 UserInfo ofxInstagram::constructUserInfo(const ofxJSONElement &userJson) const
 {
     UserInfo user;
@@ -852,4 +815,154 @@ Meta ofxInstagram::constructMeta(const ofxJSONElement &metaJson) const
     meta.errorType = metaJson["error_type"].asString();
     meta.errorMessage = metaJson["error_message"].asString();
     return meta;
+}
+
+void ofxInstagram::handleUserEndpointResponse(const ofHttpResponse &response, const ofxJSONElement &json)
+{
+    if (response.request.name == m_RequestUserInfo) {
+        if (onUserInfoReceived) {
+            onUserInfoReceived(constructUserInfo(json["data"]));
+        }
+    }
+    else if (response.request.name == m_RequestUserFeed) {
+        if (onUserFeedReceived) {
+            onUserFeedReceived(std::make_pair(constructPostDatas(json), constructPagination(json["pagination"])));
+        }
+    }
+    else if (response.request.name == m_RequestUserRecentMedia) {
+        if (onUserRecentMediaReceived) {
+            onUserRecentMediaReceived(std::make_pair(constructPostDatas(json), constructPagination(json["pagination"])));
+        }
+    }
+    else if (response.request.name == m_RequestUserLikedMedia) {
+        if (onUserLikedMediaReceived) {
+            onUserLikedMediaReceived(std::make_pair(constructPostDatas(json), constructPagination(json["pagination"])));
+        }
+    }
+    else if (response.request.name == m_RequestUserSearch) {
+        if (onUserSearchReceived) {
+            onUserSearchReceived(constructUserInfos(json));
+        }
+    }
+}
+
+void ofxInstagram::handleRelationshipEndpointResponse(const ofHttpResponse &response, const ofxJSONElement &json)
+{
+    if (response.request.name == m_RequestRelationshipFollowing) {
+        if (onUserFollowingReceived) {
+            onUserFollowingReceived(constructUserInfos(json));
+        }
+    }
+    else if (response.request.name == m_RequestRelationshipFollowers) {
+        if (onUserFollowersReceived) {
+            onUserFollowersReceived(constructUserInfos(json));
+        }
+    }
+    else if (response.request.name == m_RequestRelationshipFollowRequests) {
+        if (onUserFollowRequestsReceived) {
+            onUserFollowRequestsReceived(constructUserInfos(json));
+        }
+    }
+    else if (response.request.name == m_RequestRelationshipUserRel) {
+        if (onUserRelationshipReceived) {
+            Relationship rel;
+            rel.outgoingStatus = json["data"]["outgoing_status"].asString();
+            rel.incomngStatus = json["data"]["incoming_status"].asString();
+            onUserRelationshipReceived(rel);
+        }
+    }
+}
+
+void ofxInstagram::handleMediaEndpointResponse(const ofHttpResponse &response, const ofxJSONElement &json)
+{
+    if (response.request.name == m_RequestMediaInformation) {
+        if (onMediaInformationReceived) {
+            onMediaInformationReceived(constructPostData(json["data"]));
+        }
+    }
+    else if (response.request.name == m_RequestMediaSearch) {
+        if (onMediaSearchReceived) {
+            onMediaSearchReceived(std::make_pair(constructPostDatas(json), constructPagination(json["pagination"])));
+        }
+    }
+    else if (response.request.name == m_RequestMediaPopular) {
+        if (onMediaPopularReceived) {
+            onMediaPopularReceived(std::make_pair(constructPostDatas(json), constructPagination(json["pagination"])));
+        }
+    }
+}
+
+void ofxInstagram::handleCommentEndpointResponse(const ofHttpResponse &response, const ofxJSONElement &json)
+{
+    if (response.request.name == m_RequestCommentForMedia) {
+        if (onCommentsForMediaReceived) {
+            onCommentsForMediaReceived(constructComments(json["data"]));
+        }
+    }
+}
+
+void ofxInstagram::handleLikeEndpointResponse(const ofHttpResponse &response, const ofxJSONElement &json)
+{
+    if (response.request.name == m_RequestLikesUserListForMedia) {
+        if (onListOfUsersWhoLikedMediaReceived) {
+            onListOfUsersWhoLikedMediaReceived(constructUserInfos(json));
+        }
+    }
+}
+
+void ofxInstagram::handleTagEndpointResponse(const ofHttpResponse &response, const ofxJSONElement &json)
+{
+    if (response.request.name == m_RequestTagInfo) {
+        if (onTagInfoReceived) {
+            TagInfo tagInfo;
+            tagInfo.mediaCount = json["data"]["media_count"].asInt();
+            tagInfo.name = json["data"]["name"].asString();
+            onTagInfoReceived(tagInfo);
+        }
+    }
+    else if (response.request.name == m_RequestTagPostList) {
+        if (onPostsForTagReceived) {
+            onPostsForTagReceived(std::make_pair(constructPostDatas(json), constructPagination(json["pagination"])));
+        }
+    }
+    else if (response.request.name == m_RequestTagSearch) {
+        if (onTagSearchReceived) {
+            std::vector<TagInfo> tags;
+            const ofxJSONElement tagsJson = json["data"];
+            const unsigned int tagCount = tagsJson.size();
+            for (unsigned int tagIndex = 0; tagIndex < tagCount; tagIndex++) {
+                TagInfo tagInfo;
+                tagInfo.mediaCount = tagsJson[tagIndex]["media_count"].asInt();
+                tagInfo.name = tagsJson[tagIndex]["name"].asString();
+                tags.push_back(tagInfo);
+            }
+
+            onTagSearchReceived(tags);
+        }
+    }
+}
+
+void ofxInstagram::handleLocationEndpointResponse(const ofHttpResponse &response, const ofxJSONElement &json)
+{
+    if (response.request.name == m_RequestLocationInfo) {
+        if (onLocationInfoReceived) {
+            onLocationInfoReceived(constructLocation(json["data"]));
+        }
+    }
+    else if (response.request.name == m_RequestLocationRecentMedia) {
+        if (onPostsFromLocationReceived) {
+            onPostsFromLocationReceived(std::make_pair(constructPostDatas(json), constructPagination(json["pagination"])));
+        }
+    }
+    else if (response.request.name == m_RequestLocationSearch) {
+        if (onLocationSearchReceived) {
+            std::vector<Location> locations;
+            const ofxJSONElement locationsJson = json["data"];
+            const unsigned int locationCount = locationsJson.size();
+            for (unsigned int locationIndex = 0; locationIndex < locationCount; locationIndex++) {
+                locations.push_back(constructLocation(locationsJson[locationIndex]));
+            }
+            onLocationSearchReceived(locations);
+        }
+    }
 }
