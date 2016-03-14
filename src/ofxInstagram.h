@@ -4,195 +4,237 @@
  *  David Haylock 2015
  */
 
-#include "ofMain.h"
+#include "ofVec2f.h"
 #include "ofxJSON.h"
-#include <curl/curl.h>
 
-struct basicData
+class ofxInstagram
 {
-    string imageID;
-    string imageURL;
-    string user;
-    string created_at;
-    string caption;
-};
+public:
+    struct UserInfo {
+        std::string bio = "",
+                    fullName = "",
+                    id = "",
+                    profilePicture = "",
+                    username = "",
+                    website = "";
 
-class ofxInstagram : public Json::Value {
-    
-    public:
-        // Setup Tokens Etc...
-        void setup(string auth_token, string clientID);
-        void setCertFileLocation(std::string path);
-    
-        void draw();
-        void drawJSON(int x);
-    
-        void resetScroll();
-        void mouseScroll(int scrollY);
-    
-        void saveJson(string filename);
-    
-        ofxJSONElement getJSON() const;
-        string getParsedJSONString() const;
-        string getRawJSONString() const;
-        string getErrorMessage();
-        string getPostMessage(string message);
-    
-        string getMaxIdForPagination();
-    
-        bool isError();
-    
-        void parseData();
-        //--------------------------------------------------------------
-        // *
-        // *                   Get Data from the JSON
-        // *
-        //--------------------------------------------------------------
-        deque <string> getImageURL();
-        deque <string> getImageID();
-        deque <string> getImageCaption();
-	
-		deque <string> getVideoURL();
-		deque <string> getProfilePicture();
-    
-        deque <basicData> getBasicData();
-    
-        //--------------------------- ENDPOINTS ----------------------\\
-        //--------------------------------------------------------------
-        // *
-        // *                        USER ENDPOINTS
-        // *
-        //--------------------------------------------------------------
-        // GET User Info
-        void getUserInformation(string who);
-    
-        // GET User Feed use count to limit number of returns
-        void getUserFeed(int count = 20,string minID = "",string maxID = "");
-    
-        // GET User recent images from user pass the who as the user ID number
-        void getUserRecentMedia(string who = "self",int count = 20,string max_timestamp = "",string min_timestamp= "",string minID = "",string maxID = "");
-    
-        // GET User Liked Media
-        void getUserLikedMedia(int count = 20,string maxLikeID = "");
-    
-        // GET User Search for users
-        void getSearchUsers(string query = "",int count = 20);
-    
-        //--------------------------------------------------------------
-        // *
-        // *                        RELATIONSHIP ENDPOINTS
-        // *
-        //--------------------------------------------------------------
-        // GET User Follows
-        void getWhoUserFollows(string who = "self");
-    
-        // GET User Followed By
-        void getWhoUserIsFollowedBy(string who = "self");
-    
-        // GET User Requested-by
-        void getWhoHasRequestedToFollow(string who = "self");
+        unsigned int followerCount = 0,
+                     followingCount = 0,
+                     mediaCount = 0;
+    };
 
-        // GET User Relationship
-        void getRelationshipToUser(string who = "self");
+    struct Caption {
+        std::string createdTime = "", id = "", text = "";
+        UserInfo from;
+    };
 
-        // POST User Modify Relationship
-        void changeRelationshipToUser(string who = "self",string action = "");
+    struct Comment {
+        std::string createdTime = "",
+                    id = "",
+                    text = "";
+        UserInfo from;
+    };
 
-        //--------------------------------------------------------------
-        // *
-        // *                        MEDIA ENDPOINTS
-        // *
-        //--------------------------------------------------------------
-        // GET Info about Media Object
-        void getMediaInformation(string mediaID);
-    
-        // GET Info about Media using Shortcode
-        void getMediaInfoUsingShortcode(string shortcode = "");
-    
-        // GET Media Search
-        void searchMedia(string lat = "",string lng = "",string min_timestamp = "",string max_timestamp = "",int distance = 1000);
-    
-        // GET Popular Media
-        void getPopularMedia();
-    
-        //--------------------------------------------------------------
-        // *
-        // *                        COMMENTS ENDPOINTS
-        // *
-        //--------------------------------------------------------------
-        // GET Comments on Media Object
-        void getCommentsForMedia(string mediaID);
-    
-        // POST Comment on Media Object
-        void postCommentOnMedia(string mediaID,string comment);
-    
-        // DELETE Comment on Media Object
-        void deleteCommentOnMedia(string mediaID,string commentID);
-    
-        //--------------------------------------------------------------
-        // *
-        // *                        LIKE ENDPOINTS
-        // *
-        //--------------------------------------------------------------
-        // GET List of Users who have Liked a Media Object
-        void getListOfUsersWhoLikedMedia(string mediaID);
-        
-        // POST Like a Media Object
-        void likeMedia(string mediaID);
-        
-        // DELETE Comment on Media Object
-        void unlikeMedia(string mediaID);
-    
-        //--------------------------------------------------------------
-        // *
-        // *                        TAG ENDPOINTS
-        // *
-        //--------------------------------------------------------------
-        // GET Info about tagged object
-        void getInfoForTags(string tagname);
-    
-        // GET List of recently tagged objects
-        void getListOfTaggedObjectsNormal(string tagname,int count,string min_tagID = "",string max_tagID = "");
-        // GET List of recently tagged objects
-        void getListOfTaggedObjectsPagination(string tagname,int count,string max_tagID = "");
-        // GET Search Tags
-        void searchForTags(string query);
-    
-        //--------------------------------------------------------------
-        // *
-        // *                        LOCATIONS ENDPOINTS
-        // *
-        //--------------------------------------------------------------
-        // GET Info about a Location
-        void getInfoAboutLocation(string location);
-        
-        // GET Recent Media from location
-        void getRecentMediaFromLocation(string location,string min_timestamp = "",string max_timestamp = "",string minID = "",string maxID = "");
-    
-        // GET Find Location ID
-        void searchForLocations(string distance,string lat,string lng, string facebook_PlacesID = "",string foursquareID = "");
-    
-        //--------------------------------------------------------------
-        // *
-        // *                        GEOGRAPHY ENDPOINTS
-        // *
-        //--------------------------------------------------------------
-        // GET Recent Media from Custom GeoID
-        void getRecentMediaFromGeoID(string geoID,int count = 20,string minID = "");
-    
-    private:
-        ofxJSONElement json;
-        ofHttpResponse response;
+    struct PostMedia {
+        std::string url = "";
+        unsigned int width = 0, height = 0;
+    };
 
-        string _auth_token;
-        string _clientID;
-        string _responseData;
-        string _certPath;
-        string _paginationID;
-        void clearUrl();
-    
-        int scrollValue;
-        ofVec2f scrollAmount;
-        ofVec2f clickOrigin;
-        ofVec2f releasePos;
+    struct Location {
+        std::string id = "", name = "";
+        float latitude = 0.f, longitude = 0.f;
+    };
+
+    struct PostData {
+        Caption caption;
+        std::string attribution = "",
+                    createdTime = "",
+                    filter = "",
+                    link = "",
+                    type = "",
+                    id = "";
+
+        Location location;
+
+        PostMedia imageLowResolution,
+                  imageStandarResolution,
+                  imageThumbnail;
+
+        PostMedia videoLowBandwidth,
+                  videoLowResolution,
+                  videoStandartResolution;
+
+        UserInfo user;
+        bool userHasLiked = false;
+        unsigned int likeCount = 0, commentCount = 0;
+
+        std::vector<Comment> comments;
+        std::vector<std::string> tags;
+        std::vector<std::pair<ofVec2f, UserInfo>> usersInPhoto;
+        std::vector<UserInfo> likes;
+    };
+
+    struct Relationship {
+        std::string outgoingStatus = "", incomngStatus = "";
+    };
+
+    struct TagInfo {
+        unsigned int mediaCount = 0;
+        std::string name = "";
+    };
+
+    struct Pagination {
+        std::string minTagID = "",
+                    nextMaxID = "",
+                    nextMaxTagID = "",
+                    nextMinID = "",
+                    nextURL = "";
+    };
+
+    struct Meta {
+        std::string errorType = "",
+                    code = "",
+                    errorMessage = "";
+
+        friend ostream &operator<<(ostream &output, const Meta &m)
+        {
+            output << "Meta: {\n";
+            output << "    errorType: " << m.errorType << "\n    code:" << m.code << "\n    errorMessage: " << m.errorMessage << "\n}";
+            return output;
+        }
+    };
+
+    using Posts = std::pair<std::vector<PostData>, Pagination>;
+
+public:
+    ofxInstagram();
+
+    // Setup Tokens Etc...
+    void setup(std::string auth_token, std::string clientID);
+    void setCertFileLocation(std::string path);
+
+    void draw();
+    void drawJSON(int x);
+
+    void resetScroll();
+    void mouseScroll(int scrollY);
+
+    std::string getParsedJSONString() const;
+
+    //------------- USER ENDPOINTS -------------
+
+    // GET User Info
+    UserInfo getUserInformation(std::string who = "self");
+
+    // GET User Feed use count to limit number of returns
+    Posts getUserFeed(int count = 20, std::string username = "self", std::string minID = "", std::string maxID = "");
+
+    // GET User recent images from user pass the who as the user ID number
+    Posts getUserRecentMedia(std::string who = "self", int count = 20, std::string maxTimestamp = "", std::string minTimestamp = "", std::string minID = "",
+                             std::string maxID = "");
+
+    // GET User Liked Media
+    Posts getUserLikedMedia(int count = 20, string username = "self", std::string maxLikeID = "");
+
+    // GET User Search for users
+    std::vector<UserInfo> getSearchUsers(std::string query = "", int count = 20);
+
+    //------------- RELATIONSHIP ENDPOINTS -------------
+
+    // GET User Follows
+    std::vector<UserInfo> getWhoUserFollows(std::string who = "self");
+
+    // GET User Followed By
+    std::vector<UserInfo> getWhoUserIsFollowedBy(std::string who = "self");
+
+    // GET User Requested-by
+    std::vector<UserInfo> getWhoHasRequestedToFollow(std::string who = "self");
+
+    // GET User Relationship
+    Relationship getRelationshipToUser(std::string who = "self");
+
+    // POST User Modify Relationship
+    void changeRelationshipToUser(std::string who = "self", std::string action = "");
+
+    //------------- MEDIA ENDPOINTS -------------
+
+    // GET Info about Media Object
+    PostData getMediaInformation(std::string mediaID);
+
+    // GET Info about Media using Shortcode
+    PostData getMediaInfoUsingShortcode(std::string shortcode = "");
+
+    // GET Media Search
+    Posts searchMedia(std::string lat = "", std::string lng = "", std::string min_timestamp = "", std::string max_timestamp = "", int distance = 1000);
+
+    // GET Popular Media
+    Posts getPopularMedia();
+
+    //------------- COMMENTS ENDPOINTS -------------
+
+    // GET Comments on Media Object
+    std::vector<Comment> getCommentsForMedia(std::string mediaID);
+
+    //------------- LIKE ENDPOINTS -------------
+
+    // GET List of Users who have Liked a Media Object
+    std::vector<UserInfo> getListOfUsersWhoLikedMedia(std::string mediaID);
+
+    //------------- TAG ENDPOINTS -------------
+
+    // GET Info about tagged object
+    TagInfo getInfoForTags(std::string tagname);
+
+    // GET List of recently tagged objects
+    Posts getListOfTaggedObjectsNormal(std::string tagname, int count = 20, std::string min_tagID = "", std::string max_tagID = "");
+    // GET List of recently tagged objects
+    Posts getListOfTaggedObjectsPagination(std::string tagname, int count = 20, std::string max_tagID = "");
+    // GET Search Tags
+    std::vector<TagInfo> searchForTags(std::string query);
+
+    //------------- LOCATIONS ENDPOINTS -------------
+
+    // GET Info about a Location
+    Location getInfoAboutLocation(std::string locationID);
+
+    // GET Recent Media from location
+    Posts getRecentMediaFromLocation(std::string locationID, std::string minTimestamp = "", std::string maxTimestamp = "", std::string minID = "",
+                                     std::string maxID = "");
+
+    // GET Find Location ID
+    std::vector<Location> searchForLocations(std::string distance, std::string lat, std::string lng, std::string facebook_PlacesID = "",
+            std::string foursquareID = "");
+
+    Meta getLastError() const;
+
+private:
+    const std::string m_UsersURL,
+          m_MediaURL,
+          m_TagsURL,
+          m_LocationsURL;
+
+    //Holds the response data for the latest request
+    ofHttpResponse m_Response;
+
+    std::string m_AuthToken;
+    std::string m_ClientID;
+    std::string m_ResponseData;
+    std::string m_CertPath;
+
+    int m_ScrollValue;
+    ofVec2f m_ScrollAmount;
+    ofVec2f m_ClickOrigin;
+    ofVec2f m_ReleasePos;
+
+private:
+    std::vector<PostData> constructPostsData(const ofxJSONElement &json) const;
+    PostData constructPostData(const ofxJSONElement &postJson) const;
+
+    UserInfo constructUserInfo(const ofxJSONElement &userJson) const;
+    std::vector<Comment> constructComments(const ofxJSONElement &commentsJson) const;
+    Pagination constructPagination(const ofxJSONElement &paginationJson) const;
+
+    Location constructLocation(const ofxJSONElement &locationJson) const;
+
+    Meta constructMeta(const ofxJSONElement &metaJson) const;
 };
