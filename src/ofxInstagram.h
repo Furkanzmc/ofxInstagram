@@ -127,7 +127,7 @@ public:
     std::function<void(std::vector<Comment>)> onCommentsForMediaReceived;
 
     //Like Endpoint Callbacks
-    std::function<void(std::vector<UserInfo>)> onListOfUsersWhoLikedMediaReceived;
+    std::function<void(std::vector<UserInfo>)> onLikeListReceived;
 
     //Tag Endpoint Callbacks
     std::function<void(TagInfo)> onTagInfoReceived;

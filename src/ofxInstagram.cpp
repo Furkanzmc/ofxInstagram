@@ -401,7 +401,7 @@ void ofxInstagram::getCommentsForMedia(std::string mediaID, std::function<void(s
 void ofxInstagram::getListOfUsersWhoLikedMedia(std::string mediaID, std::function<void(std::vector<UserInfo>)> callback)
 {
     if (callback) {
-        onListOfUsersWhoLikedMediaReceived = callback;
+        onLikeListReceived = callback;
     }
 
     std::stringstream url;
@@ -904,8 +904,8 @@ void ofxInstagram::handleCommentEndpointResponse(const ofHttpResponse &response,
 void ofxInstagram::handleLikeEndpointResponse(const ofHttpResponse &response, const ofxJSONElement &json)
 {
     if (response.request.name == m_RequestLikesUserListForMedia) {
-        if (onListOfUsersWhoLikedMediaReceived) {
-            onListOfUsersWhoLikedMediaReceived(constructUserInfos(json));
+        if (onLikeListReceived) {
+            onLikeListReceived(constructUserInfos(json));
         }
     }
 }
