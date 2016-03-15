@@ -2,18 +2,6 @@
 #include "ofMain.h"
 #include <io.h>
 
-using UserInfo = ofxInstagram::UserInfo;
-using Caption = ofxInstagram::Caption;
-using Comment = ofxInstagram::Comment;
-using PostImage = ofxInstagram::PostMedia;
-using PostData = ofxInstagram::PostData;
-using Posts = ofxInstagram::Posts;
-using Relationship = ofxInstagram::Relationship;
-using TagInfo = ofxInstagram::TagInfo;
-using Pagination = ofxInstagram::Pagination;
-using Location = ofxInstagram::Location;
-using Meta = ofxInstagram::Meta;
-
 ofxInstagram::ofxInstagram()
     : m_UsersURL("https://api.instagram.com/v1/users/")
     , m_MediaURL("https://api.instagram.com/v1/media/")
@@ -627,9 +615,9 @@ std::string ofxInstagram::getParsedJSONString() const
     }
 }
 
-std::vector<ofxInstagram::PostData> ofxInstagram::constructPostDatas(const ofxJSONElement &json) const
+std::vector<PostData> ofxInstagram::constructPostDatas(const ofxJSONElement &json) const
 {
-    std::vector<ofxInstagram::PostData> posts;
+    std::vector<PostData> posts;
     const unsigned int responseCount = json["data"].size();
     const ofxJSONElement postsJson = json["data"];
     for (unsigned int postIndex = 0; postIndex < responseCount; ++postIndex) {
