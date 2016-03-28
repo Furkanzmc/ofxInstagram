@@ -1,6 +1,7 @@
 #include "ofxInstagram.h"
 #include "ofMain.h"
 #include <io.h>
+using namespace ofxInstagramTypes;
 
 ofxInstagram::ofxInstagram()
     : m_UsersURL("https://api.instagram.com/v1/users/")
@@ -737,7 +738,9 @@ std::vector<UserInfo> ofxInstagram::constructUserInfos(const ofxJSONElement &jso
 UserInfo ofxInstagram::constructUserInfo(const ofxJSONElement &userJson) const
 {
     UserInfo user;
-    user.bio = userJson["bio"].asString();
+    if (userJson["bio"].isNull() == false) {
+        user.bio = userJson["bio"].asString();
+    }
     user.fullName = userJson["full_name"].asString();
     user.id = userJson["id"].asString();
     user.profilePicture = userJson["profile_picture"].asString();

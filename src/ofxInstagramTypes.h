@@ -5,6 +5,8 @@
 #include <ostream>
 #include "ofVec2f.h"
 
+namespace ofxInstagramTypes
+{
 struct UserInfo {
     std::string bio = "",
                 fullName = "",
@@ -100,5 +102,6 @@ struct Meta {
 };
 
 using Posts = std::pair<std::vector<PostData>, Pagination>;
+}
 
 #endif // OFXINSTAGRAMTYPES_H
