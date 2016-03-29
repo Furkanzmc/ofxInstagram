@@ -344,6 +344,21 @@ void ofxInstagram::searchMedia(std::string lat, std::string lng, std::string min
 #endif //_DEBUG
 }
 
+void ofxInstagram::searchMedia(const string &tag, std::function<void (Posts)> callback)
+{
+    if (callback) {
+        onMediaSearchReceived = callback;
+    }
+
+    std::stringstream url;
+    url << m_TagsURL << tag << "/media/recent/" << "?access_token=" << m_AuthToken;
+    m_RequestIDs.push_back(ofLoadURLAsync(url.str(), m_RequestMediaSearch));
+
+#ifdef _DEBUG
+    std::cout << __FUNCTION__ << ": " << "This is your request: " << url.str()  << "\n";
+#endif //_DEBUG
+}
+
 void ofxInstagram::getPopularMedia(std::function<void(Posts)> callback)
 {
     if (callback) {

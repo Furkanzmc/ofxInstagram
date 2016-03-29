@@ -107,6 +107,7 @@ public:
     // GET Media Search
     void searchMedia(std::string lat = "", std::string lng = "", std::string min_timestamp = "", std::string max_timestamp = "", int distance = 1000,
                      std::function<void(ofxInstagramTypes::Posts)> callback = nullptr);
+    void searchMedia(const std::string &tag, std::function<void(ofxInstagramTypes::Posts)> callback = nullptr);
 
     // GET Popular Media
     void getPopularMedia(std::function<void(ofxInstagramTypes::Posts)> callback = nullptr);
